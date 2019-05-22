@@ -1,5 +1,7 @@
 import pandas as pd
 
+import learner
+
 CSV_COLUMN_NAMES = ['PassengerId', 'Survived', 'Pclass', 'Name', 'Sex', 'Age', 'SibSp', 'Parch', 'Ticket',
                     'Fare', 'Cabin', 'Embarked']
 LABEL_COLUMN_NAME = 'Survived'
@@ -82,6 +84,8 @@ def main():
 
     (my_train_x, my_train_y), (my_test_x, my_test_y) = split_data(train_data, TEST_SET_FRACTION)
     predict_x = prediction_data
+
+    model = learner.tensorflow_nn(my_train_x, my_train_y, my_test_x, my_test_y)
 
     return
 

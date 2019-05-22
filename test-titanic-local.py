@@ -4,13 +4,15 @@
 
 import os
 
-import pandas as pd  # data processing, CSV file I/O (e.g. pd.read_csv)
-import tensorflow as tf
 import matplotlib.pyplot as plt
+import pandas as pd  # data processing, CSV file I/O (e.g. pd.read_csv)
 import seaborn as sns
+import tensorflow as tf
 
 # Input data files are available in the "../input/" directory.
 # For example, running this (by clicking run or pressing Shift+Enter) will list the files in the input directory
+import data_processor
+import learner
 
 print(os.listdir("input"))
 
@@ -216,52 +218,7 @@ def train_multiple_estimators(feature_columns, x, y):
 
 
 def extract_feature_columns(input_data):
-    # Prepare wrapped columns
-    sex_column = tf.feature_column.categorical_column_with_vocabulary_list(key='Sex',
-                                                                           vocabulary_list=list(
-                                                                               input_data['Sex'].unique()))
-    pclass_column = tf.feature_column.categorical_column_with_vocabulary_list(key='Pclass',
-                                                                              vocabulary_list=list(
-                                                                                  input_data['Pclass'].unique()))
-    cabin_column = tf.feature_column.categorical_column_with_vocabulary_list(key='Cabin',
-                                                                             vocabulary_list=list(
-                                                                                 input_data['Cabin'].unique()))
-    embarked_column = tf.feature_column.categorical_column_with_vocabulary_list(key='Embarked',
-                                                                                vocabulary_list=list(
-                                                                                    input_data['Embarked'].unique()))
-    sibsp_column = tf.feature_column.categorical_column_with_vocabulary_list(key='SibSp',
-                                                                             vocabulary_list=list(
-                                                                                 input_data['SibSp'].unique()))
-    parch_column = tf.feature_column.categorical_column_with_vocabulary_list(key='Parch',
-                                                                             vocabulary_list=list(
-                                                                                 input_data['Parch'].unique()))
-    name_column = tf.feature_column.categorical_column_with_vocabulary_list(key='Name',
-                                                                            vocabulary_list=list(
-                                                                                input_data['Name'].unique()))
-    # Numerical features that will be bucketized
-    fare_num_column = tf.feature_column.numeric_column(key='Fare')
-    fare_boundaries = [0, input_data['Fare'].max() * 0.25, input_data['Fare'].max() * 0.5,
-                       input_data['Fare'].max() * 0.75, input_data['Fare'].max()]
-    fare_bucketized_column = tf.feature_column.bucketized_column(source_column=fare_num_column,
-                                                                 boundaries=fare_boundaries)
-    age_num_column = tf.feature_column.numeric_column(key='Age')
-    age_boundaries = [0, input_data['Age'].max() * 0.25, input_data['Age'].max() * 0.5,
-                      input_data['Age'].max() * 0.75, input_data['Age'].max()]
-    age_bucketized_column = tf.feature_column.bucketized_column(source_column=age_num_column,
-                                                                boundaries=age_boundaries)
-    # Feature columns describe how to use the input.
-    features = [
-        tf.feature_column.indicator_column(pclass_column),
-        tf.feature_column.indicator_column(sex_column),
-        age_bucketized_column,
-        fare_bucketized_column,
-        tf.feature_column.indicator_column(sibsp_column),
-        tf.feature_column.indicator_column(parch_column),
-        tf.feature_column.indicator_column(cabin_column),
-        tf.feature_column.indicator_column(embarked_column),
-        tf.feature_column.indicator_column(name_column)
-    ]
-    return features
+    return data_processor.extract_tensorflow_features(input_data)
 
 
 def predict_y(classifier, predict_x):
@@ -286,11 +243,15 @@ def submit(x, y):
 # Extract useful features
 my_feature_columns = extract_feature_columns(my_train_x)
 
+# model = learner.tensorflow_nn(my_train_x, my_train_y, my_test_x, my_test_y)
+model = learner.tensorflow_nn(train_input_fn(my_train_x, my_train_y, BATCH_SIZE),
+                              my_train_y, eval_input_fn(my_test_x, my_test_y, BATCH_SIZE), my_test_y)
+
 # Train multiple estimators and get the best one
-my_classifier = train_multiple_estimators(my_feature_columns, my_train_x, my_train_y)
+# my_classifier = train_multiple_estimators(my_feature_columns, my_train_x, my_train_y)
 
 # Predict y using our classifier
-my_predictions_y = predict_y(my_classifier, my_predict_x)
+# my_predictions_y = predict_y(my_classifier, my_predict_x)
 
 # Submit
-submit(my_predict_x, my_predictions_y)
+# submit(my_predict_x, my_predictions_y)
