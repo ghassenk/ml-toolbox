@@ -105,23 +105,21 @@ def predict_y(classifier, predict_x, batch_size=10):
 
 def aggregate_predictions(predictions_y_1, predictions_y_2, probabilities_1, probabilities_2):
     i = 0
-    agg_predictions = []
-    agg_probabilities = []
+    agg_predictions = predictions_y_1.copy()
+    agg_probabilities = probabilities_1.copy()
     for _ in predictions_y_1:
-        if probabilities_1[i] >= probabilities_2[i]:
-            agg_predictions.append(predictions_y_1[i])
-            agg_probabilities.append(probabilities_1[i])
-        else:
-            agg_predictions.append(predictions_y_2[i])
-            agg_probabilities.append(probabilities_2[i])
+        if probabilities_1[i] < probabilities_2[i]:
+            agg_predictions[i] = predictions_y_2[i]
+            agg_probabilities[i] = probabilities_2[i]
+
         i += 1
 
-    print('dnn: \t', probabilities_1)
-    print('lin: \t', probabilities_2)
-    print('agg: \t', agg_probabilities)
+    # print('dnn: \t', probabilities_1)
+    # print('lin: \t', probabilities_2)
+    # print('agg: \t', agg_probabilities)
     print('agg: \t', agg_predictions)
 
-    return aggregate_predictions, agg_probabilities
+    return agg_predictions, agg_probabilities
 
 
 # **************************** future *************************** #
