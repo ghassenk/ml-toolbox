@@ -171,11 +171,12 @@ def main():
     my_predictions_y_1, probabilities_1 = learner.predict_y(my_classifier_1, my_predict_x)
     my_predictions_y_2, probabilities_2 = learner.predict_y(my_classifier_2, my_predict_x)
 
-    my_predictions_y = learner.aggregate_predictions(my_predictions_y_1, my_predictions_y_2, probabilities_1,
-                                                     probabilities_2)
+    my_predictions_y, probabilities = learner.aggregate_predictions(my_predictions_y_1, my_predictions_y_2,
+                                                                    probabilities_1, probabilities_2)
 
     # Submit
-    # submit(my_predict_x, my_predictions_y)
+    submit(my_predict_x, my_predictions_y)
+    # submit(my_predict_x, my_predictions_y_2)
 
 
 if __name__ == "__main__":

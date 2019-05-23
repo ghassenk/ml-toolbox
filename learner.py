@@ -119,6 +119,7 @@ def aggregate_predictions(predictions_y_1, predictions_y_2, probabilities_1, pro
     print('dnn: \t', probabilities_1)
     print('lin: \t', probabilities_2)
     print('agg: \t', agg_probabilities)
+    print('agg: \t', agg_predictions)
 
     return aggregate_predictions, agg_probabilities
 

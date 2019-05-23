@@ -13,12 +13,12 @@ import tensorflow as tf
 # Input data files are available in the "../input/" directory.
 # For example, running this (by clicking run or pressing Shift+Enter) will list the files in the input directory
 
-print(os.listdir("input"))
+print(os.listdir("../input"))
 
 # Any results you write to the current directory are saved as output.
 TRAIN_PATH = "../input/train.csv"
 TEST_PATH = "../input/test.csv"
-SUBMISSION_PATH = "output/submission.csv"
+SUBMISSION_PATH = "./submission.csv"
 
 # TODO extract column names from the csv
 CSV_COLUMN_NAMES = ['PassengerId', 'Survived', 'Pclass', 'Name', 'Sex', 'Age', 'SibSp', 'Parch', 'Ticket',
@@ -177,9 +177,9 @@ def aggregate_predictions(predictions_y_1, predictions_y_2, probabilities_1, pro
             agg_probabilities.append(probabilities_2[i])
         i += 1
 
-    print('dnn: \t', probabilities_1)
-    print('lin: \t', probabilities_2)
-    print('agg: \t', agg_probabilities)
+    # print('dnn: \t', probabilities_1)
+    # print('lin: \t', probabilities_2)
+    # print('agg: \t', agg_probabilities)
 
     return aggregate_predictions, agg_probabilities
 
