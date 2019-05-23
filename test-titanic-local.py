@@ -7,7 +7,6 @@ import os
 import matplotlib.pyplot as plt
 import pandas as pd  # data processing, CSV file I/O (e.g. pd.read_csv)
 import seaborn as sns
-import tensorflow as tf
 
 # Input data files are available in the "../input/" directory.
 # For example, running this (by clicking run or pressing Shift+Enter) will list the files in the input directory
@@ -125,49 +124,6 @@ def print_feature_importance(input_data):
     return
 
 
-def train_input_fn(features, labels, batch_size):
-    """An input function for training"""
-    # Convert the inputs to a Dataset.
-    dataset = tf.data.Dataset.from_tensor_slices((dict(features), labels))
-
-    # Shuffle, repeat, and batch the examples.
-    dataset = dataset.shuffle(1000).repeat().batch(batch_size)
-
-    # Return the dataset.
-    return dataset
-
-
-def eval_input_fn(features, labels, batch_size):
-    """An input function for evaluation or prediction"""
-    features = dict(features)
-    if labels is None:
-        # No labels, use only features.
-        inputs = features
-    else:
-        inputs = (features, labels)
-
-    # Convert the inputs to a Dataset.
-    dataset = tf.data.Dataset.from_tensor_slices(inputs)
-
-    # Batch the examples
-    assert batch_size is not None, "batch_size must not be None"
-    dataset = dataset.batch(batch_size)
-
-    # Return the dataset.
-    return dataset
-
-
-def predict_input_fn(features, batch_size):
-    """An input function for training"""
-
-    # Convert the inputs to a Dataset.
-    dataset = tf.data.Dataset.from_tensor_slices((dict(features)))
-    dataset = dataset.batch(batch_size)
-
-    # Return the dataset.
-    return dataset
-
-
 def transform_cabin(df):
     df['Cabin'] = df['Cabin'].fillna('')
     df['Cabin'] = df['Cabin'].transform(lambda c: cabin_lambda(c))
@@ -195,63 +151,32 @@ def name_lambda(name):
     return 'None'
 
 
-def train_multiple_estimators(feature_columns, x, y):
-    # Check if dnn can be improved by changing architecture
-    dnn_classifier = tf.estimator.DNNClassifier(
-        feature_columns=feature_columns,
-        # ? hidden layers of ? nodes each.
-        hidden_units=[10, 10],
-        # The model must choose between 2 classes.
-        n_classes=2)
-    linear_classifier = tf.estimator.LinearClassifier(feature_columns=feature_columns)
-
-    dnn_classifier.train(input_fn=lambda: train_input_fn(x, y, BATCH_SIZE), steps=TRAIN_STEPS)
-    linear_classifier.train(input_fn=lambda: train_input_fn(x, y, BATCH_SIZE), steps=TRAIN_STEPS)
-
-    eval_dnn = dnn_classifier.evaluate(input_fn=lambda: eval_input_fn(x, y, BATCH_SIZE))
-    eval_linear = linear_classifier.evaluate(input_fn=lambda: eval_input_fn(x, y, BATCH_SIZE))
-
-    print('\nDNNClassifier Test set accuracy: {accuracy:0.3f}\n'.format(**eval_dnn))
-    print('LinearClassifier Test set accuracy: {accuracy:0.3f}\n'.format(**eval_linear))
-
-    return linear_classifier
-
-
-def extract_feature_columns(input_data):
-    return data_processor.extract_tensorflow_features(input_data)
-
-
-def predict_y(classifier, predict_x):
-    predictions = classifier.predict(input_fn=lambda: predict_input_fn(predict_x, BATCH_SIZE))
-
-    predictions_y = []
-    for p in predictions:
-        predictions_y.append(p['class_ids'][0])
-    return predictions_y
-
-
 def submit(x, y):
     submission = pd.DataFrame({"PassengerId": x["PassengerId"], "Survived": y})
     submission.to_csv(SUBMISSION_PATH, index=False)
 
 
-# **************************** Main script *************************** #
+# **************************** Main *************************** #
+def main():
+    # Load the data
+    (my_train_x, my_train_y), (my_test_x, my_test_y), my_predict_x = load_data()
 
-# Load the data
-(my_train_x, my_train_y), (my_test_x, my_test_y), my_predict_x = load_data()
+    # Extract useful features
+    my_feature_columns = data_processor.extract_tensorflow_features(my_train_x)
 
-# Extract useful features
-my_feature_columns = extract_feature_columns(my_train_x)
+    my_classifier_1 = learner.tensorflow_dnn(my_feature_columns, my_train_x, my_train_y, my_test_x, my_test_y)
+    my_classifier_2 = learner.tensorflow_linear(my_feature_columns, my_train_x, my_train_y, my_test_x, my_test_y)
 
-# model = learner.tensorflow_nn(my_train_x, my_train_y, my_test_x, my_test_y)
-model = learner.tensorflow_nn(train_input_fn(my_train_x, my_train_y, BATCH_SIZE),
-                              my_train_y, eval_input_fn(my_test_x, my_test_y, BATCH_SIZE), my_test_y)
+    # Predict y using our classifier
+    my_predictions_y_1, probabilities_1 = learner.predict_y(my_classifier_1, my_predict_x)
+    my_predictions_y_2, probabilities_2 = learner.predict_y(my_classifier_2, my_predict_x)
 
-# Train multiple estimators and get the best one
-# my_classifier = train_multiple_estimators(my_feature_columns, my_train_x, my_train_y)
+    my_predictions_y = learner.aggregate_predictions(my_predictions_y_1, my_predictions_y_2, probabilities_1,
+                                                     probabilities_2)
 
-# Predict y using our classifier
-# my_predictions_y = predict_y(my_classifier, my_predict_x)
+    # Submit
+    # submit(my_predict_x, my_predictions_y)
 
-# Submit
-# submit(my_predict_x, my_predictions_y)
+
+if __name__ == "__main__":
+    main()
