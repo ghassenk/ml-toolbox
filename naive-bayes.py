@@ -50,7 +50,7 @@ def fare_lambda(fare, max_fare):
 
 
 def transform_cabin(df):
-    df['Cabin'] = df['Cabin'].fillna(0)
+    df['Cabin'] = df['Cabin'].fillna('')
     df['Cabin'] = df['Cabin'].transform(lambda c: cabin_lambda(c))
 
 
@@ -102,15 +102,15 @@ def main():
     prediction_data.pop('PassengerId')
     prediction_data.pop('Ticket')
 
-    print(train_data)
+    #print(train_data)
 
     clean_data(train_data, prediction_data)
 
-    print(train_data)
+    #print(train_data)
 
     for col in train_data.columns:
         # print(train_data[col])
-        # print(train_data[col].value_counts())
+        print(train_data[col].value_counts() / train_data[col].size)
         pass
 
         # x_columns = list(CSV_COLUMN_NAMES)
