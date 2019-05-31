@@ -76,62 +76,76 @@ def name_lambda(name):
     return 'None'
 
 
-def clean_data(train_data, prediction_data):
-    transform_cabin(train_data)
-    transform_cabin(prediction_data)
-    transform_name(train_data)
-    transform_name(prediction_data)
-    transform_age(train_data)
-    transform_age(prediction_data)
-    transform_fare(train_data)
-    transform_fare(prediction_data)
+def clean_data(df, drop_na):
+    transform_cabin(df)
+    transform_name(df)
+    transform_age(df)
+    transform_fare(df)
 
-    train_data.dropna(inplace=True)
+    if drop_na:
+        df.dropna(inplace=True)
+
+
+def compute_vector_probability(x, column_names, probabilities_matrix):
+    product = 1
+    for col in column_names:
+        product = product * probabilities_matrix[col][x[col]]
+        pass
+
+    return product
 
 
 def main():
-    prediction_column_names = list(CSV_COLUMN_NAMES)
-    prediction_column_names.remove(LABEL_COLUMN_NAME)
+    test_column_names = list(CSV_COLUMN_NAMES)
+    test_column_names.remove(LABEL_COLUMN_NAME)
 
     train_data = pd.read_csv(TRAIN_PATH, names=CSV_COLUMN_NAMES, header=0)
-    prediction_data = pd.read_csv(TEST_PATH, names=prediction_column_names, header=0)
+    test_data = pd.read_csv(TEST_PATH, names=test_column_names, header=0)
 
     # Manually remove some irrelevant columns
     train_data.pop('PassengerId')
     train_data.pop('Ticket')
-    prediction_data.pop('PassengerId')
-    prediction_data.pop('Ticket')
+    test_data.pop('PassengerId')
+    test_data.pop('Ticket')
 
-    #print(train_data)
+    clean_data(train_data, True)
+    clean_data(test_data, False)
 
-    clean_data(train_data, prediction_data)
+    # To calculate P(X) we use global X data (occurrence of X values in both train and test set)
+    merged_x = pd.concat([train_data, test_data], ignore_index=True, sort=False)
 
-    #print(train_data)
+    survived = train_data[train_data["Survived"] == 1]
 
+    y = train_data.pop('Survived')
+
+    probabilities_x = dict()
+    probabilities_survived = dict()
+
+    # TODO replace with matrix operations instead of loop
     for col in train_data.columns:
-        # print(train_data[col])
-        print(train_data[col].value_counts() / train_data[col].size)
+        probabilities_x[col] = (merged_x[col].value_counts() / merged_x[col].size)
+        probabilities_survived[col] = (survived[col].value_counts() / survived[col].size)
         pass
 
-        # x_columns = list(CSV_COLUMN_NAMES)
-        # x_columns.remove(LABEL_COLUMN_NAME)
-        #
-        # df = pd.read_csv(TRAIN_PATH, names=CSV_COLUMN_NAMES, header=0)
-        #
-        # # TODO temp
-        # df.dropna(inplace=True)
-        # #print(df)
-        #
-        # X = df[x_columns]
-        # Y = df[LABEL_COLUMN_NAME]
-        #
-        # P_Y = pd.DataFrame(Y.value_counts() / Y.size)
-        # P_X = pd.DataFrame()
-        # for col in x_columns:
-        #     print(X[col].value_counts())
-        #     #P_X[col] = X[col].value_counts() / X[col].size
-        #
-        # print(P_X)
+    # The matrix containing probabilities for each Y (survived) value
+    p_y = (y.value_counts() / y.size)
+
+    # The matrix containing probabilities of each X vector from the train and test set
+    p_x = probabilities_x
+
+    # The matrix containing probabilities "knowing survived == true" of each X vector from the train set
+    p_x_survived = probabilities_x
+
+    # print('\n****** P(Y) ****** \n\n', p_y)
+    print('\n****** P(X) ****** \n\n', p_x)
+    # print('\n****** P(X/Y=1) ******\n\n', p_x_survived)
+
+    # Now given the X vectors from the test set, we use our matrix to calculate P(X) the probability of the vector X
+    # by multiplying the probability of each of its coordinates
+    # TODO replace with matrix operations instead of loop
+    for index, row in test_data.iterrows():
+        compute_vector_probability(row, test_data.columns, p_x)
+        # print(index, ' = ', row)
 
 
 if __name__ == "__main__":
