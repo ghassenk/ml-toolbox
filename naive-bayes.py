@@ -86,16 +86,7 @@ def clean_data(df, drop_na):
         df.dropna(inplace=True)
 
 
-def compute_vector_probability(x, column_names, probabilities_matrix):
-    product = 1
-    for col in column_names:
-        product = product * probabilities_matrix[col][x[col]]
-        pass
-
-    return product
-
-
-def main():
+def load_data():
     test_column_names = list(CSV_COLUMN_NAMES)
     test_column_names.remove(LABEL_COLUMN_NAME)
 
@@ -110,6 +101,21 @@ def main():
 
     clean_data(train_data, True)
     clean_data(test_data, False)
+
+    return train_data, test_data
+
+
+def compute_vector_probability(x, column_names, probabilities_matrix):
+    product = 1
+    for col in column_names:
+        product = product * probabilities_matrix[col][x[col]]
+        pass
+
+    return product
+
+
+def main():
+    train_data, test_data = load_data()
 
     # To calculate P(X) we use global X data (occurrence of X values in both train and test set)
     merged_x = pd.concat([train_data, test_data], ignore_index=True, sort=False)
