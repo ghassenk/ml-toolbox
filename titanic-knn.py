@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from sklearn.metrics import accuracy_score
 from sklearn.neighbors import KNeighborsClassifier
 
 CSV_COLUMN_NAMES = ['PassengerId', 'Survived', 'Pclass', 'Name', 'Sex', 'Age', 'SibSp', 'Parch', 'Ticket',
@@ -8,6 +9,7 @@ LABEL_COLUMN_NAME = 'Survived'
 TRAIN_PATH = "input/train.csv"
 TEST_PATH = "input/test.csv"
 SUBMISSION_PATH = "output/submission.csv"
+CROSS_VALIDATION_SET_FRACTION = 0.2
 
 
 def transform_sex(df):
@@ -156,11 +158,13 @@ def main():
     train_data, test_data = load_data()
     train_df, test_df = clean_data(train_data, test_data)
 
-    print(train_df)
+    train_set_size = int(round(len(train_data) * (1 - CROSS_VALIDATION_SET_FRACTION)))
+    x_validation_df = train_df[train_set_size:train_df.size - 1]
+    x_train_df = train_df[0:train_set_size - 1]
 
     # Before using knn we separate the survived column (Y) from the X
-    x_train_df = train_df
     y_train_df = x_train_df.pop('Survived')
+    y_validation_df = x_validation_df.pop('Survived')
 
     x_train_array = np.array(x_train_df)
     y_train_array = np.array(y_train_df)
@@ -168,15 +172,20 @@ def main():
     # X that must be predicted
     x_test_array = np.array(test_df)
 
-    knn_classifier = KNeighborsClassifier()
+    knn_classifier = KNeighborsClassifier(n_neighbors=3)
     knn_classifier.fit(x_train_array, y_train_array)
+
+    # evaluate accuracy
+    predicted_y = knn_classifier.predict(x_validation_df)
+
+    print(accuracy_score(y_validation_df, predicted_y))
 
     y_test = knn_classifier.predict(x_test_array)
 
     submission_df = pd.DataFrame({"PassengerId": test_data["PassengerId"], "Survived": y_test})
     submission_df.to_csv(SUBMISSION_PATH, index=False)
 
-    print(submission_df)
+    # print(submission_df)
 
     pass
 
