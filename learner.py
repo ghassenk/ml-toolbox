@@ -1,49 +1,60 @@
 import tensorflow as tf
+from sklearn.metrics import accuracy_score
+from sklearn.neighbors import KNeighborsClassifier
+
+# TODO check this
+# https://www.kaggle.com/dprater513/classifying-titanic-survivors-svm-logreg-knn
+
+# **************************** sklearn  *************************** #
+from sklearn.preprocessing import StandardScaler
 
 
-def train_input_fn(features, labels, batch_size):
-    """An input function for training"""
-    # Convert the inputs to a Dataset.
-    dataset = tf.data.Dataset.from_tensor_slices((dict(features), labels))
+def sklearn_knn(x_train, y_train, x_test, y_test):
+    # Scale data
+    scaler = StandardScaler()
+    scaler.fit(x_train)
+    x_train = scaler.transform(x_train)
+    x_test = scaler.transform(x_test)
 
-    # Shuffle, repeat, and batch the examples.
-    dataset = dataset.shuffle(1000).repeat().batch(batch_size)
+    # Create list of c values to try
+    ks = [i + 1 for i in range(20)]
 
-    # Return the dataset.
-    return dataset
+    # Accuracy list
+    accuracy = [0 for i in range(20)]
 
+    # Loop through c_values
+    for i, k in enumerate(ks):
+        # Create support vector machine object
+        knn = KNeighborsClassifier(n_neighbors=k)
 
-def eval_input_fn(features, labels, batch_size):
-    """An input function for evaluation or prediction"""
-    features = dict(features)
-    if labels is None:
-        # No labels, use only features.
-        inputs = features
-    else:
-        inputs = (features, labels)
+        # fit support vector machine model
+        knn.fit(x_train, y_train)
 
-    # Convert the inputs to a Dataset.
-    dataset = tf.data.Dataset.from_tensor_slices(inputs)
+        # Make predictions
+        predictions = knn.predict(x_train)
 
-    # Batch the examples
-    assert batch_size is not None, "batch_size must not be None"
-    dataset = dataset.batch(batch_size)
+        # add accuracy score to accuracy list
+        accuracy[i] = accuracy_score(y_test, predictions)
 
-    # Return the dataset.
-    return dataset
+    print(ks)
+    print(accuracy)
+    print("Best k Value:", ks[accuracy.index(max(accuracy))])
 
+    print("Prediction Accuracy: ", max(accuracy))
 
-def predict_input_fn(features, batch_size):
-    """An input function for training"""
-
-    # Convert the inputs to a Dataset.
-    dataset = tf.data.Dataset.from_tensor_slices((dict(features)))
-    dataset = dataset.batch(batch_size)
-
-    # Return the dataset.
-    return dataset
+    return predictions
+    # return max(accuracy)
 
 
+def sklearn_knn_predict(classifier, data):
+    predictions = classifier.predict(data)
+
+    return predictions
+
+
+# **************************** tensorflow  *************************** #
+
+# TODO not used yet
 def tensorflow_nn(x_train, y_train, x_test, y_test):
     model = tf.keras.models.Sequential([
         tf.keras.layers.Flatten(input_shape=(28, 28)),
@@ -91,7 +102,7 @@ def tensorflow_linear(tf_feature_columns, train_x, train_y, x_test, y_test, batc
     return linear_classifier
 
 
-def predict_y(classifier, predict_x, batch_size=10):
+def tensorflow_predict_y(classifier, predict_x, batch_size=10):
     predictions = classifier.predict(input_fn=lambda: predict_input_fn(predict_x, batch_size))
 
     predictions_y = []
@@ -101,6 +112,52 @@ def predict_y(classifier, predict_x, batch_size=10):
         predictions_y.append(p['class_ids'][0])
 
     return predictions_y, predictions_y_probabilities
+
+
+def train_input_fn(features, labels, batch_size):
+    """An input function for training"""
+    # Convert the inputs to a Dataset.
+    dataset = tf.data.Dataset.from_tensor_slices((dict(features), labels))
+
+    # Shuffle, repeat, and batch the examples.
+    dataset = dataset.shuffle(1000).repeat().batch(batch_size)
+
+    # Return the dataset.
+    return dataset
+
+
+def eval_input_fn(features, labels, batch_size):
+    """An input function for evaluation or prediction"""
+    features = dict(features)
+    if labels is None:
+        # No labels, use only features.
+        inputs = features
+    else:
+        inputs = (features, labels)
+
+    # Convert the inputs to a Dataset.
+    dataset = tf.data.Dataset.from_tensor_slices(inputs)
+
+    # Batch the examples
+    assert batch_size is not None, "batch_size must not be None"
+    dataset = dataset.batch(batch_size)
+
+    # Return the dataset.
+    return dataset
+
+
+def predict_input_fn(features, batch_size):
+    """An input function for training"""
+
+    # Convert the inputs to a Dataset.
+    dataset = tf.data.Dataset.from_tensor_slices((dict(features)))
+    dataset = dataset.batch(batch_size)
+
+    # Return the dataset.
+    return dataset
+
+
+# **************************** common *************************** #
 
 
 def aggregate_predictions(predictions_y_1, predictions_y_2, probabilities_1, probabilities_2):

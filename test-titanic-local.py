@@ -15,36 +15,40 @@ import learner
 
 print(os.listdir("input"))
 
-# Any results you write to the current directory are saved as output.
+CSV_COLUMN_NAMES = ['PassengerId', 'Survived', 'Pclass', 'Name', 'Sex', 'Age', 'SibSp', 'Parch', 'Ticket',
+                    'Fare', 'Cabin', 'Embarked']
+LABEL_COLUMN_NAME = 'Survived'
 TRAIN_PATH = "input/train.csv"
 TEST_PATH = "input/test.csv"
 SUBMISSION_PATH = "output/submission.csv"
-
-# TODO extract column names from the csv
-CSV_COLUMN_NAMES = ['PassengerId', 'Survived', 'Pclass', 'Name', 'Sex', 'Age', 'SibSp', 'Parch', 'Ticket',
-                    'Fare', 'Cabin', 'Embarked']
-CSV_COLUMN_NAMES_SUBMISSON = ['PassengerId', 'Pclass', 'Name', 'Sex', 'Age', 'SibSp', 'Parch', 'Ticket',
-                              'Fare', 'Cabin', 'Embarked']
-
 TEST_SET_FRACTION = 0.2
 
-BATCH_SIZE = 10
-TRAIN_STEPS = 100
 
-
-def load_data(y_name='Survived'):
+def load_data_for_tf(y_name='Survived'):
     """Returns the dataset as (train_x, train_y), (test_x, test_y)."""
 
     # The given "test.csv" is for predictions
     train_data = pd.read_csv(TRAIN_PATH, names=CSV_COLUMN_NAMES, header=0)
-    prediction_data = pd.read_csv(TEST_PATH, names=CSV_COLUMN_NAMES_SUBMISSON, header=0)
+    prediction_data = pd.read_csv(TEST_PATH, names=CSV_COLUMN_NAMES.remove(LABEL_COLUMN_NAME), header=0)
 
-    # Clean the data
-    clean_training_data(train_data)
-    clean_prediction_data(prediction_data)
+    # Clean the train_data data
+    # Remove the id and ticket number columns as they are not relevant for predicting survival
+    train_data.pop('PassengerId')
+    train_data.pop('Ticket')
+    # Transform cabin into 1 for "has a cabin" and 0 otherwise (thus replacing na)
+    transform_cabin(train_data)
+    transform_name(train_data)
+    # TODO check this does not improve accuracy
+    # There are many age = na , replace them with average to keep information from other columns
+    train_data['Age'].fillna(train_data['Age'].mean(), inplace=True)
+    train_data.dropna(inplace=True)
 
-    # Plot some features
-    #  plot_features(train_data)
+    # Clean prediction data
+    # Remove ticket number columns as they are not relevant for predicting survival
+    prediction_data.pop('Ticket')
+    transform_cabin(prediction_data)
+    transform_name(prediction_data)
+    prediction_data['Age'].fillna(prediction_data['Age'].mean(), inplace=True)
 
     # Before splitting we need to shuffle it to get a random order
     train_data.sample(frac=1)
@@ -61,67 +65,39 @@ def load_data(y_name='Survived'):
     return (train_x, train_y), (test_x, test_y), prediction_data
 
 
-def clean_training_data(input_data):
-    # Remove the id and ticket number columns as they are not relevant for predicting survival
-    input_data.pop('PassengerId')
-    input_data.pop('Ticket')
+def load_data_for_knn():
+    train_column_names = list(CSV_COLUMN_NAMES)
+    prediction_column_names = list(CSV_COLUMN_NAMES)
+    prediction_column_names.remove(LABEL_COLUMN_NAME)
 
-    # Transform cabin into 1 for "has a cabin" and 0 otherwise (thus replacing na)
-    transform_cabin(input_data)
-    transform_name(input_data)
+    # Manually remove some irrelevant columns
+    train_column_names.remove('PassengerId')
+    train_column_names.remove('Ticket')
+    prediction_column_names.remove('Ticket')
 
-    # TODO check this does not improve accuracy
+    train_data = pd.read_csv(TRAIN_PATH, names=train_column_names, header=0)
+    prediction_data = pd.read_csv(TEST_PATH, names=prediction_column_names, header=0)
+
+    transform_cabin(train_data)
+    transform_name(train_data)
+    transform_cabin(prediction_data)
+    transform_name(prediction_data)
+
     # There are many age = na , replace them with average to keep information from other columns
-    input_data['Age'].fillna(input_data['Age'].mean(), inplace=True)
-    input_data.dropna(inplace=True)
+    train_data['Age'].fillna(train_data['Age'].mean(), inplace=True)
+    train_data.dropna(inplace=True)
 
-    return
+    prediction_data['Age'].fillna(train_data['Age'].mean(), inplace=True)
 
+    # Before splitting we need to shuffle it to get a random order
+    train_data.sample(frac=1)
 
-def clean_prediction_data(input_data):
-    # Remove ticket number columns as they are not relevant for predicting survival
-    input_data.pop('Ticket')
+    # Split the data set into training set and test set (validation) to improve extrapolation
+    train_set_size = int(round(len(train_data) * (1 - TEST_SET_FRACTION)))
+    train = train_data[0:train_set_size - 1]
+    test = train_data[train_set_size:train_data.size - 1]
 
-    transform_cabin(input_data)
-    transform_name(input_data)
-
-    input_data['Age'].fillna(input_data['Age'].mean(), inplace=True)
-
-    return
-
-
-def plot_features(input_data):
-    sns.set()
-    sns.relplot(y='Survived', x='Fare', kind="line", data=input_data)
-
-    # sns.countplot(x='Cabin', hue='Survived', data=input_data)
-    # sns.countplot(x='Sex', hue='Survived', data=input_data)
-    # sns.countplot(x='Embarked', hue='Survived', data=input_data)
-    # sns.countplot(x='SibSp', hue='Survived', data=input_data)
-    #  sns.countplot(x='Parch', hue='Survived', data=input_data)
-    # sns.countplot(x='Pclass', hue='Survived', data=input_data)
-
-    plt.show()
-
-    return
-
-
-def print_feature_importance(input_data):
-    print(input_data[['Pclass', 'Survived']].groupby(['Pclass'], as_index=False).mean().sort_values(by='Survived',
-                                                                                                    ascending=False))
-    print(input_data[['Sex', 'Survived']].groupby(['Sex'], as_index=False).mean().sort_values(by='Survived',
-                                                                                              ascending=False))
-    print(input_data[['Fare', 'Survived']].groupby(['Fare'], as_index=False).mean().sort_values(by='Survived',
-                                                                                                ascending=False))
-    print(input_data[['Cabin', 'Survived']].groupby(['Cabin'], as_index=False).mean().sort_values(by='Survived',
-                                                                                                  ascending=False))
-    print(input_data[['Embarked', 'Survived']].groupby(['Embarked'], as_index=False).mean().sort_values(by='Survived',
-                                                                                                        ascending=False))
-    print(input_data[['SibSp', 'Survived']].groupby(['SibSp'], as_index=False).mean().sort_values(by='Survived',
-                                                                                                  ascending=False))
-    print(input_data[['Parch', 'Survived']].groupby(['Parch'], as_index=False).mean().sort_values(by='Survived',
-                                                                                                  ascending=False))
-    return
+    return train, test, prediction_data
 
 
 def transform_cabin(df):
@@ -156,29 +132,57 @@ def submit(x, y):
     submission.to_csv(SUBMISSION_PATH, index=False)
 
 
-# **************************** Main *************************** #
-def main():
+# **************************** Algos *************************** #
+def use_tensorflow():
     # Load the data
-    (my_train_x, my_train_y), (my_test_x, my_test_y), my_predict_x = load_data()
+    (train_x, train_y), (test_x, test_y), predict_x = load_data_for_tf()
 
     # Extract useful features
-    my_feature_columns = data_processor.extract_tensorflow_features(my_train_x)
+    my_feature_columns = data_processor.extract_tensorflow_features(train_x)
 
-    my_classifier_1 = learner.tensorflow_dnn(my_feature_columns, my_train_x, my_train_y, my_test_x, my_test_y)
-    my_classifier_2 = learner.tensorflow_linear(my_feature_columns, my_train_x, my_train_y, my_test_x, my_test_y)
+    my_classifier_1 = learner.tensorflow_dnn(my_feature_columns, train_x, train_y, test_x, test_y)
+    my_classifier_2 = learner.tensorflow_linear(my_feature_columns, train_x, train_y, test_x, test_y)
 
     # Predict y using our classifier
-    my_predictions_y_1, probabilities_1 = learner.predict_y(my_classifier_1, my_predict_x)
-    my_predictions_y_2, probabilities_2 = learner.predict_y(my_classifier_2, my_predict_x)
+    my_predictions_y_1, probabilities_1 = learner.tensorflow_predict_y(my_classifier_1, predict_x)
+    my_predictions_y_2, probabilities_2 = learner.tensorflow_predict_y(my_classifier_2, predict_x)
 
     (my_predictions_y, probabilities) = learner.aggregate_predictions(my_predictions_y_1, my_predictions_y_2,
-                                                                    probabilities_1, probabilities_2)
+                                                                      probabilities_1, probabilities_2)
 
-    print('agg: \t', my_predictions_y)
+    print('predictions: \t', my_predictions_y)
+
+    return my_predictions_y
+
+
+def use_sklearn_knn(train_x, train_y, test_x, test_y, predict_x):
+    x_train_num = data_processor.transform_to_numeric_columns(train_x)
+    x_test_num = data_processor.transform_to_numeric_columns(test_x)
+    x_predict_num = data_processor.transform_to_numeric_columns(predict_x)
+
+    print('x_train_num.shape() : \t', x_train_num.shape)
+    print('x_predict_num.shape() : \t', x_predict_num.shape)
+
+    # my_classifier = learner.sklearn_knn(x_train_num, train_y, x_test_num, test_y)
+    #
+    # my_predictions_y = learner.sklearn_knn_predict(my_classifier, x_predict_num)
+    #
+    # print('predictions: \t', my_predictions_y)
+
+    return my_predictions_y
+
+
+# **************************** Main *************************** #
+def main():
+    # Train & predict using tensorflow
+    # my_predictions_y = use_tensorflow()
+
+    # Train & predict using sklearn knn
+    my_predictions_y = use_sklearn_knn(my_train_x, my_train_y, my_test_x, my_test_y, my_predict_x)
 
     # Submit
-    submit(my_predict_x, my_predictions_y)
-    # submit(my_predict_x, my_predictions_y_2)
+    if my_predictions_y:
+        submit(my_predict_x, my_predictions_y)
 
 
 if __name__ == "__main__":
