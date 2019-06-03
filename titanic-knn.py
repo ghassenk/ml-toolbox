@@ -3,6 +3,8 @@ import pandas as pd
 from sklearn.metrics import accuracy_score
 from sklearn.neighbors import KNeighborsClassifier
 
+import feature_utils
+
 CSV_COLUMN_NAMES = ['PassengerId', 'Survived', 'Pclass', 'Name', 'Sex', 'Age', 'SibSp', 'Parch', 'Ticket',
                     'Fare', 'Cabin', 'Embarked']
 LABEL_COLUMN_NAME = 'Survived'
@@ -151,6 +153,9 @@ def clean_data(train_data, test_data):
     clean_df(train_df, True)
     clean_df(test_df, False)
 
+    # feature_utils.transform_into_numerical_columns(train_df, True)
+    # feature_utils.transform_into_numerical_columns(test_df, False)
+
     return train_df, test_df
 
 
@@ -172,7 +177,7 @@ def main():
     # X that must be predicted
     x_test_array = np.array(test_df)
 
-    knn_classifier = KNeighborsClassifier(n_neighbors=3)
+    knn_classifier = KNeighborsClassifier(n_neighbors=2)
     knn_classifier.fit(x_train_array, y_train_array)
 
     # evaluate accuracy

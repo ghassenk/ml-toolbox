@@ -37,10 +37,10 @@ def transform_to_numeric_columns(df, drop_na=True):
     if drop_na:
         df_copy.dropna(inplace=True)
     i = 0
-    for dtype in df_copy.dtypes:
-        if dtype is np.dtype(int):
+    for d_type in df_copy.dtypes:
+        if d_type is np.dtype(int):
             pass
-        elif dtype is np.dtype(float):
+        elif d_type is np.dtype(float):
             pass
         else:
             col_name = df_copy.columns[i]
